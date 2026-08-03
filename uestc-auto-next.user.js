@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         UESTC 自动点击下一节
 // @namespace    local.uestc.learning-helper
-// @version      0.5.0
+// @version      0.6.0
 // @description  视频真实播放结束后，自动进入并尝试播放下一课件。
 // @match        https://resource.uestc.edu.cn/*
 // @run-at       document-idle
@@ -195,18 +195,75 @@
     return null;
   }
 
+  function resourceIdentity(resource) {
+    if (!resource) return '';
+    return resource.identification || resource.guid_ || resource.id || '';
+  }
+
+  function collectCourseResources(nodes, output = []) {
+    if (!Array.isArray(nodes)) return output;
+
+    for (const node of nodes) {
+      const info = node?.info || node;
+      const resourceType = info?.resourse_type;
+      const resourceAttribute = info?.resource_attributes;
+      const isCourseResource = Boolean(
+        info?.chapter_describe &&
+        resourceType &&
+        resourceType !== 'chapter' &&
+        resourceType !== 'homework' &&
+        resourceAttribute !== 'homework'
+      );
+
+      if (isCourseResource) output.push(info);
+      const children = Array.isArray(node?.childInfo) ? node.childInfo : node?.children;
+      collectCourseResources(children, output);
+    }
+
+    return output;
+  }
+
+  function findNextResourceAcrossChapters(appVm, chapterVm) {
+    const current = appVm?.selectChapter || chapterVm?.selectChapter;
+    const currentIdentity = resourceIdentity(current);
+    if (!currentIdentity) return null;
+
+    const candidateTrees = [
+      appVm?.treeInfo,
+      chapterVm?.treeInfo,
+      chapterVm?.chapterList
+    ];
+
+    for (const tree of candidateTrees) {
+      const resources = collectCourseResources(tree, []);
+      const currentIndex = resources.findIndex((resource) =>
+        resourceIdentity(resource) === currentIdentity
+      );
+
+      if (currentIndex >= 0 && currentIndex < resources.length - 1) {
+        return resources[currentIndex + 1];
+      }
+    }
+
+    return null;
+  }
+
   function goToNextViaPlatformState() {
     const pageWindow = typeof unsafeWindow === 'undefined' ? window : unsafeWindow;
     const app = pageWindow.document?.getElementById('app');
     const appVm = app?.__vue__;
-    const nextChapter = appVm?.nextChapter;
     const chapterVm = appVm?.$refs?.chapter;
+    const platformNextChapter = appVm?.nextChapter;
+    const nextChapter = platformNextChapter || findNextResourceAcrossChapters(appVm, chapterVm);
 
     if (!nextChapter || typeof chapterVm?.goTo !== 'function') return false;
 
-    // 使用平台自己的 nextChapter 计算结果；它会跳过章节标题和作业项。
+    // 优先使用平台结果；章节末尾没有结果时，从完整目录寻找下一课件。
     chapterVm.goTo({ info: nextChapter });
-    log('已通过平台原生课件状态进入下一项。', nextChapter.chapter_name || nextChapter);
+    log(
+      platformNextChapter ? '已进入下一课件。' : '已跨章节进入下一课件。',
+      nextChapter.chapter_name || nextChapter
+    );
     return true;
   }
 
