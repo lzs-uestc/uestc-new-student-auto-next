@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         UESTC 课程自然结束后自动下一节
+// @name         UESTC 自动点击下一节
 // @namespace    local.uestc.learning-helper
 // @version      0.5.0
 // @description  视频真实播放结束后，自动进入并尝试播放下一课件。
