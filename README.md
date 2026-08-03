@@ -76,7 +76,7 @@
 5. 不要最小化课程窗口，也不要在该窗口中切换到其他标签页。
 
 DeskPins 只能帮助窗口保持置顶，无法保证兼容平台的所有前台检测方式。请从可信来源获取软件，并遵守平台和课程的使用要求。
-
+下载地址：https://efotinis.neocities.org/deskpins/
 
 ![使用deskpin后效果](DeskPin_show.png)
 ## 常见问题
